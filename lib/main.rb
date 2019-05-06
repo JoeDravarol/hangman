@@ -1,4 +1,3 @@
-# 4. Get user inputs
 # 5. Push each 'letter' guess into an array
 # 6. Have a turns/lives to keep track of how many incorrect guesses the player has
 # 7. Once the game is working. Work on the save and load data. (Yaml, JSON)
@@ -51,3 +50,19 @@ class Hangman
     [ground, both_legs, left_leg, both_arms, left_arm, body, head, noose, gallow]
   end
 end
+
+class Player
+
+  def self.get_guess
+    loop do
+      puts "Please enter your guess"
+      guess = gets.chomp.downcase
+      return guess if Player.guess_valid?(guess)
+    end
+  end
+
+  def self.guess_valid?(guess)
+    (guess.empty? || guess =~ /\d/) ? false : true
+  end
+end
+
