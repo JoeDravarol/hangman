@@ -1,3 +1,5 @@
+require "yaml"
+
 class Dictionary
   @@dictionary = File.readlines("5desk.txt")
 
@@ -11,21 +13,25 @@ class Dictionary
 end
 
 class Hangman
-  @@repeat_part = []
+  @repeat_part = []
+
+  class << self
+    attr_accessor :repeat_part
+  end
 
   def self.draw_hangman(turns_left)
     hangman_parts = Hangman.hangman_parts
 
     hangman_parts.length.downto(turns_left) do |part| 
       
-      if part == 5 && @@repeat_part.include?(5)
+      if part == 5 && @repeat_part.include?(5)
         next
-      elsif part == 4 && @@repeat_part.include?(4)
+      elsif part == 4 && @repeat_part.include?(4)
         next
-      elsif part == 2 && @@repeat_part.include?(2)
+      elsif part == 2 && @repeat_part.include?(2)
         next
       elsif part == 5 || part == 4 || part == 2
-        @@repeat_part << part
+        @repeat_part << part
       end
 
       puts "#{hangman_parts[part]} ".center(20)
@@ -69,7 +75,7 @@ class Game
     @turns = 9
     @secret_word = Dictionary.pick_word(5, 12)
     @letter_used = []
-    play_game
+    game_options
   end
 
   def display_instructions
@@ -144,15 +150,37 @@ class Game
     puts "\n "
   end
 
-  def play_game
+  def game_options
+    input = nil
+    loop do
+      puts "Would you like to start a new game or load a previous save?"
+      puts "1. New Game || 2. Load Game"
+      print "Please select 1 or 2: "
+      input = gets.chomp
+      break if input == "1" || input == "2"
+    end
+
+    input == "1" ? new_game : load_game
+  end
+
+  def new_game
     display_instructions
+    play_game
+  end
+
+  def play_game
     display_lines
 
     loop do
       guess = get_guess
-      update_letter_used(guess)
-      check_guess(guess)
-      display_letter_used if @turns != 0 && !player_won?
+
+      if guess == "save--"
+        save_game
+      else
+        update_letter_used(guess) if guess.length == 1
+        check_guess(guess)
+        display_letter_used if @turns != 0 && !player_won?
+      end 
 
       break if game_ended?
     end
@@ -178,6 +206,47 @@ class Game
     Hangman.draw_hangman(@turns)
     display_lines
     puts "You have #{turns} incorrect guesses remaining" if @turns != 0
+  end
+
+  def save_game
+    game_data = {
+      turns: @turns,
+      secret_word: @secret_word,
+      letter_used: @letter_used,
+      repeat_part: Hangman.repeat_part
+    }
+
+    Dir.mkdir("saves") unless Dir.exists? "saves"
+
+    puts "WARNING! If the filename already exist the data on that file will be overwritten!"
+    print "Enter a filename for your save: "
+    filename = gets.chomp
+
+    File.open("saves/#{filename}.yaml", "w") do |file|
+      file.puts game_data.to_yaml
+    end
+
+    puts "Your progress has been saved!"
+  end
+
+  def load_game
+    filename = nil
+    loop do
+      print "Please enter an existing filename: "
+      filename = gets.chomp
+      break if File.exists? "saves/#{filename}.yaml"
+    end
+
+    # Read data from file
+    game_data = YAML.load_file("saves/#{filename}.yaml")
+
+    # Load data to current game
+    @turns = game_data[:turns]
+    @secret_word = game_data[:secret_word]
+    @letter_used = game_data[:letter_used] 
+    Hangman.repeat_part = game_data[:repeat_part]
+
+    play_game
   end
 end
 
